@@ -61,6 +61,13 @@ td:focus,th:focus{box-shadow:inset 0 0 0 2px var(--ac)}
 .todo input{margin-top:7px;width:17px;height:17px;accent-color:var(--ac)}
 .todo span{flex:1;outline:none}
 .todo input:checked+span{text-decoration:line-through;opacity:.55}
+#lock{display:none;position:fixed;inset:0;z-index:99;background:var(--side);color:var(--sidetx);align-items:center;justify-content:center}
+#lock.on{display:flex}
+#lock form{width:min(340px,86vw);text-align:center}
+#lock h2{font-size:24px;margin:0 0 6px}
+#lock input{width:100%;padding:10px 12px;margin:14px 0 8px;border-radius:8px;border:1px solid #ffffff40;background:var(--side2);color:#fff}
+#lock button{width:100%;padding:10px;border:0;border-radius:8px;background:var(--ac);color:#fff;cursor:pointer}
+#lockerr{min-height:1.6em;color:#ffb4b4;font-size:14px}
 @media(max-width:760px){
  aside{position:fixed;inset:0 auto 0 0;z-index:20;transform:translateX(-100%)}
  body.nav aside{transform:none}
@@ -71,11 +78,13 @@ td:focus,th:focus{box-shadow:inset 0 0 0 2px var(--ac)}
 </style>
 </head>
 <body>
+<div id="lock"><form id="lockf"><h2>🔒 請輸入密碼</h2><div>這份旅遊手冊已加密</div><input type="password" id="pwin" autocomplete="off" placeholder="密碼"><div id="lockerr"></div><button type="submit">開啟</button></form></div>
 <aside>
   <div id="trip" contenteditable="true" spellcheck="false">✈ 我的旅遊手冊</div>
   <ul id="pages"></ul>
   <div class="sidebtns">
     <button class="add" id="addPage">＋ 新增頁面</button>
+    <button id="pw" style="flex-basis:100%">🔒 設定本機密碼</button>
     <button id="shr" style="flex-basis:100%">📤 匯出分享檔（單一 HTML）</button>
     <button id="exp">匯出備份</button>
     <button id="imp">匯入備份</button>
@@ -122,14 +131,26 @@ let SEED=null;try{SEED=JSON.parse($('#seed').textContent)}catch(e){}
 const KEY=SEED?'travelPlanner.'+SEED.id:'travelPlanner.v1';
 const uid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const DEF=['總覽','班機','費用','待辦事項','住宿','餐廳','滑雪課程','景點','備忘'];
-let S;
-try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
-if((!S||!S.pages)&&SEED)S=SEED.data;
-if(!S||!S.pages||!S.pages.length){S={name:'✈ 我的旅遊手冊',pages:DEF.map(t=>({id:uid(),title:t,html:''}))};S.cur=S.pages[0].id}
+/* 加密工具：PBKDF2 + AES-GCM */
+const b64=u=>{let s='';u.forEach(b=>s+=String.fromCharCode(b));return btoa(s)};
+const ub=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function mkKey(pw,salt){const m=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:200000,hash:'SHA-256'},m,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function encT(text,K){const iv=crypto.getRandomValues(new Uint8Array(12));const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},K.key,new TextEncoder().encode(text)));return{s:b64(K.salt),i:b64(iv),c:b64(ct)}}
+async function decT(e,pw){const salt=ub(e.s),key=await mkKey(pw,salt);const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(e.i)},key,ub(e.c));return{text:new TextDecoder().decode(pt),K:{key,salt}}}
+let S,K=null,LOCK=null;
+try{const r=JSON.parse(localStorage.getItem(KEY));if(r&&r.enc)LOCK=r.enc;else S=r}catch(e){}
+if(!S&&!LOCK&&SEED){if(SEED.enc)LOCK=SEED.enc;else S=SEED.data}
+if(!LOCK&&(!S||!S.pages||!S.pages.length)){S={name:'✈ 我的旅遊手冊',pages:DEF.map(t=>({id:uid(),title:t,html:''}))};S.cur=S.pages[0].id}
 const content=$('#content');
 const cur=()=>S.pages.find(p=>p.id===S.cur)||S.pages[0];
 const sync=()=>{cur().html=content.innerHTML};
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(){
+  if(!S)return;
+  try{
+    if(K)encT(JSON.stringify(S),K).then(e=>localStorage.setItem(KEY,JSON.stringify({enc:e}))).catch(()=>{});
+    else localStorage.setItem(KEY,JSON.stringify(S));
+  }catch(e){}
+}
 let t0;const later=()=>{clearTimeout(t0);t0=setTimeout(()=>{sync();save()},300)};
 
 /* 側欄 */
@@ -238,17 +259,25 @@ content.addEventListener('input',later);
 content.addEventListener('paste',e=>{e.preventDefault();document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain'))});
 
 /* 備份 */
-$('#shr').onclick=()=>{
+$('#shr').onclick=async()=>{
   sync();save();
+  let enc=null;const pw=prompt('設定開啟密碼（留空＝不加密）：');
+  if(pw===null)return;
+  if(pw){
+    if(!window.crypto||!crypto.subtle)return alert('此瀏覽器環境不支援加密');
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    enc=await encT(JSON.stringify(S),{key:await mkKey(pw,salt),salt});
+  }
   const c=document.documentElement.cloneNode(true);
   c.querySelector('#pages').innerHTML='';c.querySelector('#content').innerHTML='';c.querySelector('#pt').textContent='';
   c.querySelector('body').classList.remove('nav');
-  c.querySelector('#seed').textContent=JSON.stringify({id:uid(),data:S}).replace(/</g,'\\u003c');
+  if(enc)c.querySelector('#trip').textContent='';
+  c.querySelector('#seed').textContent=JSON.stringify(enc?{id:uid(),enc}:{id:uid(),data:S}).replace(/</g,'\\u003c');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['<!DOCTYPE html>\n'+c.outerHTML],{type:'text/html'}));
   a.download='travel-plan.html';a.click();
 };
-$('#exp').onclick=()=>{sync();save();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='travel-planner-backup.json';a.click()};
+$('#exp').onclick=()=>{if(K&&!confirm('備份檔不會加密，任何人拿到都能看到內容。仍要匯出嗎？'))return;sync();save();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='travel-planner-backup.json';a.click()};
 $('#imp').onclick=()=>$('#file').click();
 $('#file').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
@@ -257,7 +286,33 @@ $('#file').onchange=e=>{
 };
 $('#prt').onclick=()=>window.print();
 
-$('#pt').textContent=cur().title;content.innerHTML=cur().html;renderSide();
+function boot(){
+  $('#pt').textContent=cur().title;content.innerHTML=cur().html;renderSide();
+  $('#pw').textContent=K?'🔒 已設密碼（點此取消）':'🔒 設定本機密碼';
+}
+function showLock(){
+  $('#lock').classList.add('on');
+  if(!window.crypto||!crypto.subtle)$('#lockerr').textContent='此瀏覽器環境不支援解密';
+  $('#pwin').focus();
+}
+$('#lockf').onsubmit=async e=>{
+  e.preventDefault();
+  try{
+    const r=await decT(LOCK,$('#pwin').value);
+    S=JSON.parse(r.text);if(!S.cur)S.cur=S.pages[0].id;
+    K=r.K;LOCK=null;$('#lock').classList.remove('on');$('#pwin').value='';boot();save();
+  }catch(_){$('#lockerr').textContent='密碼錯誤，請再試一次'}
+};
+$('#pw').onclick=async()=>{
+  if(!window.crypto||!crypto.subtle)return alert('此瀏覽器環境不支援加密');
+  if(K){if(confirm('取消密碼？之後開啟這個檔案就不需要輸入密碼了。')){K=null;sync();save();boot()}return}
+  const a=prompt('設定開啟密碼：');if(!a)return;
+  if(prompt('再輸入一次確認：')!==a)return alert('兩次輸入不一致');
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  K={key:await mkKey(a,salt),salt};sync();save();boot();
+  alert('已設定。之後每次開啟都需要輸入密碼，忘記就無法復原，請務必記好。');
+};
+if(LOCK)showLock();else boot();
 </script>
 </body>
 </html>
