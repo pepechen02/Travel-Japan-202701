@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>我的旅遊手冊</title>
+<style>
+:root{--bg:#eef3f6;--paper:#fff;--side:#1b2a35;--side2:#27404f;--sidetx:#dbe6ed;--tx:#1d2830;--mut:#6a7a85;--ac:#2f87b0;--bd:#cfdbe2;--hl:#e3f1f8;box-sizing:border-box}
+@media(prefers-color-scheme:dark){:root{--bg:#121a20;--paper:#1b252d;--tx:#e4ecf1;--mut:#93a4af;--bd:#34444f;--hl:#223846;--side:#0d151b}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{display:flex;background:var(--bg);color:var(--tx);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;line-height:1.7}
+button,select,input{font:inherit;color:inherit}
+aside{width:270px;flex:none;background:var(--side);color:var(--sidetx);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);transition:transform .2s}
+#trip{margin:18px 16px 10px;font-size:20px;font-weight:700;outline:none;border-bottom:1px dashed #ffffff33;padding-bottom:6px}
+#pages{list-style:none;margin:0;padding:6px 8px;overflow:auto;flex:1}
+#pages li{display:flex;align-items:center;gap:2px;padding:6px 8px;border-radius:6px;cursor:pointer}
+#pages li:hover{background:var(--side2)}
+#pages li.on{background:var(--ac);color:#fff}
+#pages li span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pages li i{font-style:normal;opacity:0;font-size:12px;padding:2px 5px;border-radius:4px}
+#pages li:hover i,#pages li.on i{opacity:.85}
+#pages li i:hover{background:#ffffff30;opacity:1}
+.sidebtns{padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid #ffffff1f;display:flex;flex-wrap:wrap;gap:6px}
+.sidebtns button{flex:1 1 auto;background:var(--side2);border:0;border-radius:6px;padding:6px 8px;color:var(--sidetx);cursor:pointer;font-size:13px}
+.sidebtns button:hover{background:#35566a}
+.sidebtns .add{flex-basis:100%;background:var(--ac);color:#fff}
+main{flex:1;min-width:0;overflow:auto;padding-top:env(safe-area-inset-top,0px)}
+#bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);border-bottom:1px solid var(--bd);padding:8px 14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#bar .sep{width:1px;height:22px;background:var(--bd);margin:0 4px}
+#bar button,#bar select{background:var(--paper);border:1px solid var(--bd);border-radius:6px;padding:3px 9px;cursor:pointer;min-height:30px}
+#bar button:hover,#bar select:hover{background:var(--hl)}
+#bar input[type=color]{width:34px;height:30px;padding:2px;border:1px solid var(--bd);border-radius:6px;background:var(--paper);cursor:pointer}
+#bar .ins{background:var(--hl);border-color:var(--ac)}
+#menu{display:none}
+.symwrap{position:relative}
+#sym{display:none;position:absolute;top:36px;left:0;width:290px;background:var(--paper);border:1px solid var(--bd);border-radius:8px;padding:8px;grid-template-columns:repeat(8,1fr);gap:2px;box-shadow:0 8px 24px #0003}
+#sym.open{display:grid}
+#sym button{border:0;font-size:18px;padding:3px;min-height:0}
+article{max-width:880px;margin:0 auto;padding:26px 28px 90px}
+#pt{font-size:30px;margin:0 0 18px;letter-spacing:.02em}
+#content{min-height:240px}
+#content:empty::before{content:"這一頁還是空的。用上方「＋標題 / ＋文字 / ＋表格 / ＋待辦」新增區塊。";color:var(--mut)}
+.block{position:relative;margin:12px 0;padding:6px 10px;border-radius:8px;border:1px solid transparent}
+.block:hover,.block:focus-within{border-color:var(--bd);background:var(--paper)}
+.ctl{position:absolute;right:6px;top:-13px;display:none;gap:2px;background:var(--paper);border:1px solid var(--bd);border-radius:6px;padding:1px 3px}
+.block:hover .ctl,.block:focus-within .ctl{display:flex}
+.ctl button,.tctl button{background:none;border:0;cursor:pointer;padding:0 6px;color:var(--mut)}
+.ctl button:hover,.tctl button:hover{color:var(--ac)}
+.tctl{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;font-size:13px}
+.tctl button{border:1px solid var(--bd);border-radius:5px}
+h2[contenteditable]{margin:6px 0;font-size:22px;border-left:4px solid var(--ac);padding-left:10px;outline:none}
+.rt{min-height:1.7em;outline:none;white-space:pre-wrap}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid var(--bd);padding:6px 10px;min-width:90px;vertical-align:top;outline:none}
+th{background:var(--hl);text-align:left}
+td:focus,th:focus{box-shadow:inset 0 0 0 2px var(--ac)}
+.todo{list-style:none;padding:0;margin:4px 0}
+.todo li{display:flex;gap:8px;align-items:flex-start;padding:2px 0}
+.todo input{margin-top:7px;width:17px;height:17px;accent-color:var(--ac)}
+.todo span{flex:1;outline:none}
+.todo input:checked+span{text-decoration:line-through;opacity:.55}
+@media(max-width:760px){
+ aside{position:fixed;inset:0 auto 0 0;z-index:20;transform:translateX(-100%)}
+ body.nav aside{transform:none}
+ #menu{display:inline-block}
+ article{padding:18px 14px 80px}
+}
+@media print{aside,#bar,.ctl,.tctl{display:none!important}main{overflow:visible}.block{border:0!important}}
+</style>
+</head>
+<body>
+<aside>
+  <div id="trip" contenteditable="true" spellcheck="false">✈ 我的旅遊手冊</div>
+  <ul id="pages"></ul>
+  <div class="sidebtns">
+    <button class="add" id="addPage">＋ 新增頁面</button>
+    <button id="shr" style="flex-basis:100%">📤 匯出分享檔（單一 HTML）</button>
+    <button id="exp">匯出備份</button>
+    <button id="imp">匯入備份</button>
+    <button id="prt">列印</button>
+    <input type="file" id="file" accept=".json" hidden>
+  </div>
+</aside>
+<main>
+  <div id="bar">
+    <button id="menu" title="目錄">☰</button>
+    <select id="ff" title="字型">
+      <option value="">字型</option>
+      <option value='"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif'>黑體</option>
+      <option value='"Noto Serif TC","Songti TC","PMingLiU",serif'>明體</option>
+      <option value='"DFKai-SB","BiauKai","Kaiti TC",serif'>楷體</option>
+      <option value='"Arial Rounded MT Bold","Hiragino Maru Gothic Pro","Microsoft JhengHei",sans-serif'>圓體</option>
+      <option value='"Courier New",monospace'>等寬</option>
+    </select>
+    <select id="fs" title="字體大小">
+      <option value="">大小</option>
+      <option value="2">小</option><option value="3">一般</option><option value="4">中</option>
+      <option value="5">大</option><option value="6">特大</option><option value="7">超大</option>
+    </select>
+    <button data-c="bold" title="粗體"><b>B</b></button>
+    <button data-c="italic" title="斜體"><i>I</i></button>
+    <button data-c="underline" title="底線"><u>U</u></button>
+    <input type="color" id="col" value="#d6336c" title="文字顏色">
+    <div class="symwrap"><button id="symBtn" title="插入符號">☺ 符號</button><div id="sym"></div></div>
+    <span class="sep"></span>
+    <button class="ins" data-b="h">＋標題</button>
+    <button class="ins" data-b="t">＋文字</button>
+    <button class="ins" data-b="tb">＋表格</button>
+    <button class="ins" data-b="td">＋待辦</button>
+  </div>
+  <article>
+    <h1 id="pt"></h1>
+    <div id="content"></div>
+  </article>
+</main>
+<script type="application/json" id="seed"></script>
+<script>
+const $=s=>document.querySelector(s);
+let SEED=null;try{SEED=JSON.parse($('#seed').textContent)}catch(e){}
+const KEY=SEED?'travelPlanner.'+SEED.id:'travelPlanner.v1';
+const uid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const DEF=['總覽','班機','費用','待辦事項','住宿','餐廳','滑雪課程','景點','備忘'];
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if((!S||!S.pages)&&SEED)S=SEED.data;
+if(!S||!S.pages||!S.pages.length){S={name:'✈ 我的旅遊手冊',pages:DEF.map(t=>({id:uid(),title:t,html:''}))};S.cur=S.pages[0].id}
+const content=$('#content');
+const cur=()=>S.pages.find(p=>p.id===S.cur)||S.pages[0];
+const sync=()=>{cur().html=content.innerHTML};
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+let t0;const later=()=>{clearTimeout(t0);t0=setTimeout(()=>{sync();save()},300)};
+
+/* 側欄 */
+function renderSide(){
+  $('#trip').textContent=S.name;
+  $('#pages').innerHTML=S.pages.map(p=>`<li data-id="${p.id}" class="${p.id===S.cur?'on':''}"><span></span><i data-a="ren" title="重新命名">✎</i><i data-a="up" title="上移">▲</i><i data-a="dn" title="下移">▼</i><i data-a="rm" title="刪除">✕</i></li>`).join('');
+  [...$('#pages').children].forEach((li,i)=>li.firstChild.textContent=S.pages[i].title);
+}
+function show(id){sync();S.cur=id;const p=cur();$('#pt').textContent=p.title;content.innerHTML=p.html;renderSide();save();document.body.classList.remove('nav');$('main').scrollTop=0}
+$('#pages').onclick=e=>{
+  const li=e.target.closest('li');if(!li)return;
+  const id=li.dataset.id,a=e.target.dataset.a,i=S.pages.findIndex(p=>p.id===id);
+  if(!a)return show(id);
+  if(a==='ren'){const n=prompt('頁面名稱',S.pages[i].title);if(n&&n.trim()){S.pages[i].title=n.trim();if(id===S.cur)$('#pt').textContent=n.trim();renderSide();save()}}
+  if(a==='up'&&i>0){[S.pages[i-1],S.pages[i]]=[S.pages[i],S.pages[i-1]];renderSide();save()}
+  if(a==='dn'&&i<S.pages.length-1){[S.pages[i+1],S.pages[i]]=[S.pages[i],S.pages[i+1]];renderSide();save()}
+  if(a==='rm'){
+    if(S.pages.length<2)return alert('至少要保留一個頁面');
+    if(!confirm('刪除「'+S.pages[i].title+'」和裡面的內容？'))return;
+    S.pages.splice(i,1);if(id===S.cur){S.cur=S.pages[Math.max(0,i-1)].id;const p=cur();$('#pt').textContent=p.title;content.innerHTML=p.html}
+    renderSide();save();
+  }
+};
+$('#addPage').onclick=()=>{const n=prompt('新頁面名稱');if(!n||!n.trim())return;const p={id:uid(),title:n.trim(),html:''};S.pages.push(p);show(p.id)};
+$('#trip').oninput=e=>{S.name=e.target.textContent;save()};
+$('#menu').onclick=()=>document.body.classList.toggle('nav');
+
+/* 選取範圍保存（讓下拉選單不會失去選取的文字） */
+let saved=null,last=null;
+document.addEventListener('selectionchange',()=>{
+  const s=getSelection();
+  if(s.rangeCount&&content.contains(s.anchorNode))saved=s.getRangeAt(0).cloneRange();
+});
+content.addEventListener('focusin',e=>{last=e.target});
+function restore(){if(!saved)return false;const s=getSelection();s.removeAllRanges();s.addRange(saved);return true}
+function fmt(cmd,val){
+  if(!restore())return alert('請先在內容區選取要修改的文字');
+  document.execCommand('styleWithCSS',false,true);
+  document.execCommand(cmd,false,val);later();
+}
+document.querySelectorAll('[data-c]').forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>fmt(b.dataset.c)});
+$('#ff').onchange=e=>{if(e.target.value)fmt('fontName',e.target.value);e.target.selectedIndex=0};
+$('#fs').onchange=e=>{if(e.target.value)fmt('fontSize',e.target.value);e.target.selectedIndex=0};
+$('#col').oninput=e=>fmt('foreColor',e.target.value);
+
+/* 符號 */
+const SYM='✈ 🛫 🛬 🏨 🍴 🍜 ☕ 🍺 ⛷ 🏂 ❄ ⛄ 🚗 🚆 🚌 🚕 📍 📅 ⏰ 💰 💴 🎫 🛂 🧳 📷 ☎ ✅ ☐ ⚠ ❗ ❓ ★ ♥ ➜ ✔ ✘ ♨ ☀ 🌙 ☔ ※ ◎ ○ ・ 〜 ¥ ＄ ＋ －'.split(' ');
+$('#sym').innerHTML=SYM.map(s=>`<button>${s}</button>`).join('');
+$('#symBtn').onmousedown=e=>e.preventDefault();
+$('#symBtn').onclick=()=>$('#sym').classList.toggle('open');
+$('#sym').onmousedown=e=>e.preventDefault();
+$('#sym').onclick=e=>{
+  if(e.target.tagName!=='BUTTON')return;
+  if(!restore())return alert('請先點一下要插入符號的位置');
+  document.execCommand('insertText',false,e.target.textContent);later();
+};
+document.addEventListener('click',e=>{if(!e.target.closest('.symwrap'))$('#sym').classList.remove('open')});
+
+/* 區塊 */
+const CTL='<div class="ctl" contenteditable="false"><button data-a="bup" title="上移">↑</button><button data-a="bdn" title="下移">↓</button><button data-a="bdel" title="刪除區塊">✕</button></div>';
+const E='contenteditable="true"';
+const cell=(tag,t)=>`<${tag} ${E}>${t}</${tag}>`;
+const TB='<div class="tctl" contenteditable="false"><button data-a="addr">＋列</button><button data-a="addc">＋欄</button><button data-a="delr">－列</button><button data-a="delc">－欄</button><span style="color:var(--mut)">（依游標所在儲存格）</span></div>';
+const TPL={
+  h:`<h2 ${E}>標題</h2>`,
+  t:`<div class="rt" ${E}>在這裡輸入內容…</div>`,
+  tb:`<div class="tw"><table><tr>${cell('th','欄位一')+cell('th','欄位二')+cell('th','欄位三')}</tr><tr>${cell('td','')+cell('td','')+cell('td','')}</tr><tr>${cell('td','')+cell('td','')+cell('td','')}</tr></table></div>${TB}`,
+  td:`<ul class="todo"><li><input type="checkbox"><span ${E}>待辦事項</span></li></ul><div class="tctl" contenteditable="false"><button data-a="addt">＋項目</button><button data-a="delt">－項目</button></div>`
+};
+document.querySelectorAll('[data-b]').forEach(b=>{
+  b.onmousedown=e=>e.preventDefault();
+  b.onclick=()=>{
+    const d=document.createElement('div');d.className='block';d.innerHTML=CTL+TPL[b.dataset.b];
+    const ref=last&&last.closest&&last.closest('.block');
+    if(ref&&content.contains(ref))ref.after(d);else content.append(d);
+    const ed=d.querySelector('[contenteditable=true]');
+    if(ed){ed.focus();document.execCommand('selectAll')}
+    sync();save();d.scrollIntoView({block:'nearest',behavior:'smooth'});
+  };
+});
+content.addEventListener('click',e=>{
+  const b=e.target.closest('button[data-a]');if(!b)return;
+  const a=b.dataset.a,blk=b.closest('.block'),cellEl=last&&last.closest&&last.closest('td,th');
+  const tbl=blk.querySelector('table');
+  if(a==='bup'&&blk.previousElementSibling)blk.previousElementSibling.before(blk);
+  if(a==='bdn'&&blk.nextElementSibling)blk.nextElementSibling.after(blk);
+  if(a==='bdel'&&confirm('刪除這個區塊？'))blk.remove();
+  if(tbl){
+    const rows=[...tbl.rows],inT=cellEl&&tbl.contains(cellEl);
+    const r=inT?cellEl.parentNode:rows[rows.length-1],ci=inT?cellEl.cellIndex:rows[0].cells.length-1;
+    if(a==='addr'){const n=r.cloneNode(true);[...n.cells].forEach(c=>c.innerHTML='');r.after(n)}
+    if(a==='addc')rows.forEach(row=>{const c=document.createElement(row.cells[0].tagName.toLowerCase());c.contentEditable='true';row.cells[Math.min(ci,row.cells.length-1)].after(c)});
+    if(a==='delr'&&rows.length>1)r.remove();
+    if(a==='delc'&&rows[0].cells.length>1)rows.forEach(row=>row.cells[Math.min(ci,row.cells.length-1)].remove());
+  }
+  const ul=blk.querySelector('.todo');
+  if(ul){
+    const li=last&&last.closest&&last.closest('li');
+    if(a==='addt'){const n=document.createElement('li');n.innerHTML=`<input type="checkbox"><span ${E}>新項目</span>`;(li&&ul.contains(li)?li:ul.lastElementChild).after(n)}
+    if(a==='delt'&&ul.children.length>1)(li&&ul.contains(li)?li:ul.lastElementChild).remove();
+  }
+  sync();save();
+});
+content.addEventListener('change',e=>{if(e.target.type==='checkbox'){e.target.toggleAttribute('checked',e.target.checked);sync();save()}});
+content.addEventListener('input',later);
+content.addEventListener('paste',e=>{e.preventDefault();document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain'))});
+
+/* 備份 */
+$('#shr').onclick=()=>{
+  sync();save();
+  const c=document.documentElement.cloneNode(true);
+  c.querySelector('#pages').innerHTML='';c.querySelector('#content').innerHTML='';c.querySelector('#pt').textContent='';
+  c.querySelector('body').classList.remove('nav');
+  c.querySelector('#seed').textContent=JSON.stringify({id:uid(),data:S}).replace(/</g,'\\u003c');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['<!DOCTYPE html>\n'+c.outerHTML],{type:'text/html'}));
+  a.download='travel-plan.html';a.click();
+};
+$('#exp').onclick=()=>{sync();save();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='travel-planner-backup.json';a.click()};
+$('#imp').onclick=()=>$('#file').click();
+$('#file').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  f.text().then(t=>{try{const d=JSON.parse(t);if(!d.pages||!d.pages.length)throw 0;if(!confirm('匯入會取代目前所有內容，確定嗎？'))return;S=d;S.cur=S.pages[0].id;show(S.cur)}catch(_){alert('這不是有效的備份檔')}});
+  e.target.value='';
+};
+$('#prt').onclick=()=>window.print();
+
+$('#pt').textContent=cur().title;content.innerHTML=cur().html;renderSide();
+</script>
+</body>
+</html>
